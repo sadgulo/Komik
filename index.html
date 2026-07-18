@@ -57,21 +57,26 @@
         ul { list-style-type: none; }
         li { background: rgba(51, 65, 85, 0.7); padding: 15px; margin-bottom: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #38bdf8; transition: transform 0.2s, background 0.2s; flex-wrap: wrap; gap: 10px; }
         li:hover { transform: translateY(-2px); background: rgba(51, 65, 85, 0.9); }
-        .comic-info { display: flex; flex-direction: column; gap: 4px; max-width: 55%; min-width: 200px; }
+        .comic-info { display: flex; flex-direction: column; gap: 8px; max-width: 65%; min-width: 200px; }
         .comic-title { font-weight: 600; color: #f8fafc; font-size: 16px; }
-        .comic-meta { display: flex; gap: 10px; align-items: center; }
-        .comic-chapter { color: #38bdf8; font-size: 14px; font-weight: 500; }
         
-        /* Dropdown Ganti Kategori */
-        .select-inline { padding: 4px 8px; background: #1e293b; border: 1px solid #475569; color: #38bdf8; font-size: 12px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
+        /* Detail Aksi Internal (Chapter & Kategori) */
+        .comic-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .chapter-input-container { display: flex; align-items: center; gap: 4px; color: #38bdf8; font-size: 14px; font-weight: 500; }
         
-        /* Tombol Aksi */
-        .action-btn { display: flex; gap: 8px; align-items: center; }
+        /* Input Edit Chapter Langsung */
+        .input-chapter-inline { width: 70px; padding: 4px 6px; background: #1e293b; border: 1px solid #475569; color: #38bdf8; font-size: 14px; border-radius: 4px; font-weight: bold; text-align: center; }
+        
+        /* Dropdown Kategori yang Sudah Disamaratakan */
+        .select-inline { width: 110px; padding: 4px 8px; background: #1e293b; border: 1px solid #475569; color: #38bdf8; font-size: 12px; border-radius: 4px; font-weight: bold; text-transform: uppercase; text-align: center; }
+        
+        /* Tombol Aksi Kanan */
+        .action-btn { display: flex; gap: 6px; align-items: center; }
         .btn-action { border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; }
         .btn-action:hover { opacity: 0.9; }
-        .btn-plus { width: 40px; height: 35px; background-color: #22c55e; color: white; font-size: 16px; }
-        .btn-minus { width: 40px; height: 35px; background-color: #eab308; color: #1e293b; font-size: 16px; }
-        .btn-delete { padding: 0 12px; height: 35px; background-color: #ef4444; color: white; }
+        .btn-plus { width: 35px; height: 32px; background-color: #22c55e; color: white; font-size: 16px; }
+        .btn-minus { width: 35px; height: 32px; background-color: #eab308; color: #1e293b; font-size: 16px; }
+        .btn-delete { padding: 0 10px; height: 32px; background-color: #ef4444; color: white; }
         .empty-state { text-align: center; color: #94a3b8; padding: 20px 0; font-style: italic; }
     </style>
 </head>
@@ -119,7 +124,7 @@
 
     let currentCategory = 'semua';
 
-    // 16 Data Bawaan dari Catatan Gambar
+    // 16 Data Bawaan
     const initialComics = [
         { title: "Nano Machine", chapter: 313, type: "manhwa" },
         { title: "The Corporate Underdog Who Does Everything Right", chapter: 16, type: "manhwa" },
@@ -139,7 +144,6 @@
         { title: "S-Class Hunter Heals With Monster", chapter: 47, type: "manhwa" }
     ];
 
-    // Gunakan penyimpanan terpisah agar data bawaan tidak tabrakan jika memori kosong
     if (!localStorage.getItem('myComicList')) {
         localStorage.setItem('myComicList', JSON.stringify(initialComics));
     }
@@ -163,7 +167,10 @@
                     <div class="comic-info">
                         <span class="comic-title">${comic.title}</span>
                         <div class="comic-meta">
-                            <span class="comic-chapter">Chapter ${comic.chapter}</span>
+                            <div class="chapter-input-container">
+                                <span>Chapter</span>
+                                <input type="number" class="input-chapter-inline" min="1" value="${comic.chapter}" onchange="editChapterDirect(${index}, this.value)">
+                            </div>
                             <select class="select-inline" onchange="updateComicType(${index}, this.value)">
                                 <option value="manhwa" ${comicTypeSafe === 'manhwa' ? 'selected' : ''}>Manhwa</option>
                                 <option value="manhua" ${comicTypeSafe === 'manhua' ? 'selected' : ''}>Manhua</option>
@@ -184,6 +191,14 @@
         if (count === 0) {
             comicList.innerHTML = '<li class="empty-state">Tidak ada komik dalam kategori atau pencarian ini.</li>';
         }
+    }
+
+    // Fungsi ketik angka chapter langsung
+    window.editChapterDirect = function(index, value) {
+        let newChapter = parseInt(value);
+        if (isNaN(newChapter) || newChapter < 1) newChapter = 1;
+        comics[index].chapter = newChapter;
+        localStorage.setItem('myComicList', JSON.stringify(comics));
     }
 
     window.updateComicType = function(index, newType) {
