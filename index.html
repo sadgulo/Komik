@@ -8,11 +8,8 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-image: linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.75)), url('anime-moon-landscape.jpg');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            background-repeat: no-repeat;
+            /* Mengubah latar belakang menjadi full black */
+            background-color: #000000; 
             color: #e2e8f0; 
             padding: 30px 20px; 
             min-height: 100vh;
@@ -20,12 +17,13 @@
         .container { 
             max-width: 780px; 
             margin: auto; 
+            /* Menggunakan warna abu-abu kebiruan gelap transparan agar kontras dengan latar hitam */
             background: rgba(30, 41, 59, 0.8); 
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             padding: 25px; 
             border-radius: 12px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         h1 { text-align: center; color: #38bdf8; margin-bottom: 25px; font-size: 24px; display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -86,7 +84,7 @@
 <body>
 
 <div class="container">
-    <h1>📖 Pengingat Chapter Komik</h1>
+    <h1>📖 Chapter Komik</h1>
     
     <!-- Formulir Tambah Komik -->
     <form id="comicForm">
@@ -127,7 +125,6 @@
 
     let currentCategory = 'semua';
 
-    // 16 Data Bawaan
     const initialComics = [
         { title: "Nano Machine", chapter: 313, type: "manhwa" },
         { title: "The Corporate Underdog Who Does Everything Right", chapter: 16, type: "manhwa" },
@@ -155,16 +152,14 @@
 
     let comics = JSON.parse(localStorage.getItem('myComicList'));
 
-    // Migrasi jika ada data lama yang belum punya timestamp
     comics = comics.map((c, i) => {
         if (!c.lastModified) return { ...c, lastModified: Date.now() - i };
         return c;
     });
     
-    // 🔥 PERUBAHAN UTAMA: SORTIR HANYA DILAKUKAN SEKALI SAAT HALAMAN DIMUAT
+    // Sortir dilakukan sekali saat halaman dimuat
     comics.sort((a, b) => b.lastModified - a.lastModified);
 
-    // FUNGSI UNTUK MENGUBAH TIMESTAMP MENJADI FORMAT TANGGAL YANG BISA DIBACA
     function formatTime(timestamp) {
         if (!timestamp) return '';
         const date = new Date(timestamp);
@@ -252,7 +247,6 @@
         const chapter = parseInt(comicChapter.value);
         const type = comicType.value;
 
-        // 🔥 Menggunakan 'unshift' agar komik yang baru ditambah langsung ditaruh di urutan pertama (paling atas)
         comics.unshift({ title, chapter, type, lastModified: Date.now() });
         saveAndRender();
         comicForm.reset();
@@ -273,12 +267,10 @@
     }
 
     function saveAndRender() {
-        // 🔥 Saya menghapus fungsi sort dari sini agar saat tombol ditekan, posisi tetap diam di tempat.
         localStorage.setItem('myComicList', JSON.stringify(comics));
         displayComics();
     }
 
-    // Render pertama kali saat web dibuka
     saveAndRender();
 </script>
 
