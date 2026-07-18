@@ -144,11 +144,29 @@
         { title: "S-Class Hunter Heals With Monster", chapter: 47, type: "manhwa" }
     ];
 
+    // Cek dan inisialisasi localStorage
     if (!localStorage.getItem('myComicList')) {
-        localStorage.setItem('myComicList', JSON.stringify(initialComics));
+        // Tambahkan timestamp buatan agar berurutan sesuai list awal
+        const now = Date.now();
+        const initData = initialComics.map((c, index) => ({ ...c, lastModified: now - index }));
+        localStorage.setItem('myComicList', JSON.stringify(initData));
     }
 
     let comics = JSON.parse(localStorage.getItem('myComicList'));
+
+    // Migrasi otomatis jika ada data lama yang belum punya lastModified
+    let needsMigration = false;
+    comics = comics.map((c, i) => {
+        if (!c.lastModified) {
+            needsMigration = true;
+            return { ...c, lastModified: Date.now() - i }; // Beri timestamp waktu sekarang
+        }
+        return c;
+    });
+    
+    if (needsMigration) {
+        saveAndRender();
+    }
 
     function displayComics() {
         comicList.innerHTML = '';
@@ -198,11 +216,13 @@
         let newChapter = parseInt(value);
         if (isNaN(newChapter) || newChapter < 1) newChapter = 1;
         comics[index].chapter = newChapter;
-        localStorage.setItem('myComicList', JSON.stringify(comics));
+        comics[index].lastModified = Date.now(); // Update timestamp
+        saveAndRender();
     }
 
     window.updateComicType = function(index, newType) {
         comics[index].type = newType;
+        comics[index].lastModified = Date.now(); // Update timestamp
         saveAndRender();
     }
 
@@ -223,7 +243,8 @@
         const chapter = parseInt(comicChapter.value);
         const type = comicType.value;
 
-        comics.push({ title, chapter, type });
+        // Tambahkan komik baru beserta timestamp saat ini
+        comics.push({ title, chapter, type, lastModified: Date.now() });
         saveAndRender();
         comicForm.reset();
     });
@@ -231,6 +252,7 @@
     window.changeChapter = function(index, change) {
         comics[index].chapter += change;
         if (comics[index].chapter < 1) comics[index].chapter = 1;
+        comics[index].lastModified = Date.now(); // Update timestamp karena chapter berubah
         saveAndRender();
     }
 
@@ -241,12 +263,16 @@
         }
     }
 
+    // Fungsi inti: Menyortir data berdasarkan waktu terbaru sebelum disimpan dan dirender
     function saveAndRender() {
+        // Sortir array dari lastModified terbesar (terbaru) ke terkecil (terlama)
+        comics.sort((a, b) => b.lastModified - a.lastModified);
         localStorage.setItem('myComicList', JSON.stringify(comics));
         displayComics();
     }
 
-    displayComics();
+    // Render pertama kali (pastikan di-sortir juga jika ada perubahan urutan di background)
+    saveAndRender();
 </script>
 
 </body>
