@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar Bacaan Komik Saya</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), url('https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=1920');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #e2e8f0; 
+            padding: 30px 20px; 
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 780px; 
+            margin: auto; 
+            background: rgba(30, 41, 59, 0.85); 
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        h1 { text-align: center; color: #38bdf8; margin-bottom: 25px; font-size: 24px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        
+        /* Formulir */
+        form { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: rgba(15, 23, 42, 0.6); padding: 15px; border-radius: 8px; border: 1px solid #334155; }
+        input[type="text"], input[type="number"], select { padding: 12px; background: #1e293b; border: 1px solid #475569; border-radius: 6px; color: white; font-size: 14px; outline: none; transition: border 0.2s; }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus { border-color: #38bdf8; }
+        input[type="text"] { flex: 3; min-width: 200px; }
+        input[type="number"] { width: 80px; }
+        select { flex: 1; min-width: 110px; cursor: pointer; }
+        
+        /* Pilihan Kategori (Filter Buttons) */
+        .category-filter { display: flex; gap: 8px; margin-bottom: 15px; justify-content: center; flex-wrap: wrap; }
+        .btn-filter { padding: 8px 16px; background: #334155; border: 1px solid #475569; color: #cbd5e1; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; }
+        .btn-filter:hover { background: #475569; color: white; }
+        .btn-filter.active { background: #38bdf8; color: #0f172a; border-color: #38bdf8; }
+
+        /* Kolom Pencarian */
+        .search-container { margin-bottom: 20px; }
+        .search-input { width: 100%; padding: 10px 15px; background: rgba(51, 65, 85, 0.8); border: 1px solid #475569; border-radius: 6px; color: white; font-size: 14px; }
+        .search-input::placeholder { color: #94a3b8; }
+
+        /* Daftar Komik */
+        ul { list-style-type: none; }
+        li { background: rgba(51, 65, 85, 0.7); padding: 15px; margin-bottom: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #38bdf8; transition: transform 0.2s, background 0.2s; flex-wrap: wrap; gap: 10px; }
+        li:hover { transform: translateY(-2px); background: rgba(51, 65, 85, 0.9); }
+        .comic-info { display: flex; flex-direction: column; gap: 4px; max-width: 55%; min-width: 200px; }
+        .comic-title { font-weight: 600; color: #f8fafc; font-size: 16px; }
+        .comic-meta { display: flex; gap: 10px; align-items: center; }
+        .comic-chapter { color: #38bdf8; font-size: 14px; font-weight: 500; }
+        
+        /* Dropdown Ganti Kategori di Dalam List */
+        .select-inline { padding: 4px 8px; background: #1e293b; border: 1px solid #475569; color: #38bdf8; font-size: 12px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
+        
+        /* Tombol Aksi */
+        .action-btn { display: flex; gap: 8px; align-items: center; }
+        .btn-action { border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; }
+        .btn-action:hover { opacity: 0.9; }
+        .btn-plus { width: 40px; height: 35px; background-color: #22c55e; color: white; font-size: 16px; }
+        .btn-minus { width: 40px; height: 35px; background-color: #eab308; color: #1e293b; font-size: 16px; }
+        .btn-delete { padding: 0 12px; height: 35px; background-color: #ef4444; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📖 Pengingat Chapter Komik</h1>
+    
+    <!-- Formulir Tambah Komik -->
+    <form id="comicForm">
+        <input type="text" id="comicTitle" placeholder="Judul Komik Baru..." required>
+        <input type="number" id="comicChapter" placeholder="Ch" min="1" required>
+        <select id="comicType">
+            <option value="manhwa">Manhwa</option>
+            <option value="manhua">Manhua</option>
+            <option value="manga">Manga</option>
+        </select>
+        <button type="submit" class="btn-submit">Tambah</button>
+    </form>
+
+    <!-- Pilihan Filter Kategori -->
+    <div class="category-filter">
+        <button class="btn-filter active" onclick="filterCategory('semua', this)">Semua</button>
+        <button class="btn-filter" onclick="filterCategory('manhwa', this)">Manhwa</button>
+        <button class="btn-filter" onclick="filterCategory('manhua', this)">Manhua</button>
+        <button class="btn-filter" onclick="filterCategory('manga', this)">Manga</button>
+    </div>
+
+    <!-- Kolom Cari Komik -->
+    <div class="search-container">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cari judul komik di sini..." oninput="runFilter()">
+    </div>
+
+    <!-- Tempat Daftar Komik Muncul -->
+    <ul id="comicList"></ul>
+</div>
+
+<script>
+    const comicForm = document.getElementById('comicForm');
+    const comicTitle = document.getElementById('comicTitle');
+    const comicChapter = document.getElementById('comicChapter');
+    const comicType = document.getElementById('comicType');
+    const comicList = document.getElementById('comicList');
+    const searchInput = document.getElementById('searchInput');
+
+    let currentCategory = 'semua';
+
+    // Data awal otomatis
+    const initialComics = [
+        { title: "Nano Machine", chapter: 313, type: "manhwa" },
+        { title: "The Corporate Underdog Who Does Everything Right", chapter: 16, type: "manhwa" },
+        { title: "Reborn As The Heavenly Demon", chapter: 16, type: "manhwa" },
+        { title: "The Great Heavenly Demon Sovereign", chapter: 46, type: "manhwa" },
+        { title: "Chronicles Of The Martial God's", chapter: 70, type: "manhwa" },
+        { title: "Pick Me Up", chapter: 26, type: "manhwa" },
+        { title: "The Last All-Knowing Man Collected", chapter: 29, type: "manhwa" },
+        { title: "The Regressed Mercenarys Machination", chapter: 97, type: "manhwa" },
+        { title: "Academy's Undercover Professor", chapter: 89, type: "manhwa" },
+        { title: "The Great Heavenly Demon Sovereign (Alt)", chapter: 44, type: "manhwa" },
+        { title: "I Became the Rogue First Prince", chapter: 26, type: "manhwa" },
+        { title: "Infinite Mage", chapter: 43, type: "manhwa" },
+        { title: "Reincarnation of the Demonic God", chapter: 44, type: "manhwa" },
+        { title: "Black Corporation", chapter: 58, type: "manhwa" },
+        { title: "Absolut Sword Sense", chapter: 7, type: "manhwa" },
+        { title: "S-Class Hunter Heals With Monster", chapter: 47, type: "manhwa" }
+    ];
+
+    if (!localStorage.getItem('myComicList')) {
+        localStorage.setItem('myComicList', JSON.stringify(initialComics));
+    }
+
+    let comics = JSON.parse(localStorage.getItem('myComicList'));
+
+    // Fungsi menampilkan data dengan filter pencarian & kategori
+    function displayComics() {
+        comicList.innerHTML = '';
+        const filterText = searchInput.value.toLowerCase();
+
+        comics.forEach((comic, index) => {
+            const comicTypeSafe = comic.type || 'manhwa';
+            const matchCategory = (currentCategory === 'semua' || comicTypeSafe === currentCategory);
+            const matchSearch = comic.title.toLowerCase().includes(filterText);
+
+            if (matchCategory && matchSearch) {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="comic-info">
+                        <span class="comic-title">${comic.title}</span>
+                        <div class="comic-meta">
+                            <span class="comic-chapter">Chapter ${comic.chapter}</span>
+                            <!-- Dropdown ganti kategori langsung -->
+                            <select class="select-inline" onchange="updateComicType(${index}, this.value)">
+                                <option value="manhwa" ${comicTypeSafe === 'manhwa' ? 'selected' : ''}>Manhwa</option>
+                                <option value="manhua" ${comicTypeSafe === 'manhua' ? 'selected' : ''}>Manhua</option>
+                                <option value="manga" ${comicTypeSafe === 'manga' ? 'selected' : ''}>Manga</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="action-btn">
+                        <button class="btn-action btn-plus" onclick="changeChapter(${index}, 1)">+</button>
+                        <button class="btn-action btn-minus" onclick="changeChapter(${index}, -1)">-</button>
+                        <button class="btn-action btn-delete" onclick="deleteComic(${index})">Hapus</button>
+                    </div>
+                `;
+                comicList.appendChild(li);
+            }
+        });
+    }
+
+    // Fungsi mengubah kategori komik yang sudah terdaftar
+    window.updateComicType = function(index, newType) {
+        comics[index].type = newType;
+        localStorage.setItem('myComicList', JSON.stringify(comics));
+        // Refresh tampilan agar jika sedang memfilter kategori, komik yang pindah kategori langsung menyesuaikan diri
+        displayComics();
+    }
+
+    window.filterCategory = function(category, element) {
+        currentCategory = category;
+        document.querySelectorAll('.btn-filter').forEach(btn => btn.classList.remove('active'));
+        element.classList.add('active');
+        displayComics();
+    }
+
+    window.runFilter = function() {
+        displayComics();
+    }
+
+    comicForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const title = comicTitle.value.trim();
+        const chapter = parseInt(comicChapter.value);
+        const type = comicType.value;
+
+        comics.push({ title, chapter, type });
+        saveAndRender();
+        comicForm.reset();
+    });
+
+    window.changeChapter = function(index, change) {
+        comics[index].chapter += change;
+        if (comics[index].chapter < 1) comics[index].chapter = 1;
+        saveAndRender();
+    }
+
+    window.deleteComic = function(index) {
+        if (confirm(`Hapus "${comics[index].title}" dari daftar?`)) {
+            comics.splice(index, 1);
+            saveAndRender();
+        }
+    }
+
+    function saveAndRender() {
+        localStorage.setItem('myComicList', JSON.stringify(comics));
+        displayComics();
+    }
+
+    displayComics();
+</script>
+
+</body>
+</html>
