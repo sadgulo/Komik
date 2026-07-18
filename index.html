@@ -155,16 +155,14 @@
 
     let comics = JSON.parse(localStorage.getItem('myComicList'));
 
-    let needsMigration = false;
+    // Migrasi jika ada data lama yang belum punya timestamp
     comics = comics.map((c, i) => {
-        if (!c.lastModified) {
-            needsMigration = true;
-            return { ...c, lastModified: Date.now() - i };
-        }
+        if (!c.lastModified) return { ...c, lastModified: Date.now() - i };
         return c;
     });
     
-    if (needsMigration) saveAndRender();
+    // 🔥 PERUBAHAN UTAMA: SORTIR HANYA DILAKUKAN SEKALI SAAT HALAMAN DIMUAT
+    comics.sort((a, b) => b.lastModified - a.lastModified);
 
     // FUNGSI UNTUK MENGUBAH TIMESTAMP MENJADI FORMAT TANGGAL YANG BISA DIBACA
     function formatTime(timestamp) {
@@ -176,7 +174,7 @@
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
-        }).replace(/\./g, ':'); // Mengubah format jam dari 10.30 menjadi 10:30
+        }).replace(/\./g, ':');
     }
 
     function displayComics() {
@@ -254,7 +252,8 @@
         const chapter = parseInt(comicChapter.value);
         const type = comicType.value;
 
-        comics.push({ title, chapter, type, lastModified: Date.now() });
+        // 🔥 Menggunakan 'unshift' agar komik yang baru ditambah langsung ditaruh di urutan pertama (paling atas)
+        comics.unshift({ title, chapter, type, lastModified: Date.now() });
         saveAndRender();
         comicForm.reset();
     });
@@ -274,11 +273,12 @@
     }
 
     function saveAndRender() {
-        comics.sort((a, b) => b.lastModified - a.lastModified);
+        // 🔥 Saya menghapus fungsi sort dari sini agar saat tombol ditekan, posisi tetap diam di tempat.
         localStorage.setItem('myComicList', JSON.stringify(comics));
         displayComics();
     }
 
+    // Render pertama kali saat web dibuka
     saveAndRender();
 </script>
 
