@@ -56,7 +56,12 @@
         li { background: rgba(51, 65, 85, 0.7); padding: 15px; margin-bottom: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #38bdf8; transition: transform 0.2s, background 0.2s; flex-wrap: wrap; gap: 10px; }
         li:hover { transform: translateY(-2px); background: rgba(51, 65, 85, 0.9); }
         .comic-info { display: flex; flex-direction: column; gap: 8px; max-width: 65%; min-width: 200px; }
+        
+        /* Wadah Judul & Tombol Copy */
+        .title-wrapper { display: flex; align-items: center; gap: 8px; }
         .comic-title { font-weight: 600; color: #f8fafc; font-size: 16px; }
+        .btn-copy { background: #334155; border: 1px solid #475569; color: #cbd5e1; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 11px; font-weight: bold; transition: all 0.2s; }
+        .btn-copy:hover { background: #38bdf8; color: #0f172a; border-color: #38bdf8; }
         
         /* Detail Aksi Internal (Chapter & Kategori) */
         .comic-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -187,7 +192,10 @@
                 const li = document.createElement('li');
                 li.innerHTML = `
                     <div class="comic-info">
-                        <span class="comic-title">${comic.title}</span>
+                        <div class="title-wrapper">
+                            <span class="comic-title">${comic.title}</span>
+                            <button class="btn-copy" onclick="copyTitle(${index}, this)" title="Copy Judul">📋 Copy</button>
+                        </div>
                         <div class="comic-meta">
                             <div class="chapter-input-container">
                                 <span>Chapter</span>
@@ -214,6 +222,19 @@
         if (count === 0) {
             comicList.innerHTML = '<li class="empty-state">Tidak ada komik dalam kategori atau pencarian ini.</li>';
         }
+    }
+
+    window.copyTitle = function(index, btnElement) {
+        const titleToCopy = comics[index].title;
+        navigator.clipboard.writeText(titleToCopy).then(() => {
+            const originalText = btnElement.innerHTML;
+            btnElement.innerHTML = '✅ Copied';
+            setTimeout(() => {
+                btnElement.innerHTML = originalText;
+            }, 1500);
+        }).catch(err => {
+            console.error('Gagal menyalin:', err);
+        });
     }
 
     window.editChapterDirect = function(index, value) {
