@@ -14,6 +14,7 @@ input[type=text],input[type=number],input[type=email],input[type=password],selec
 input:focus,select:focus{border-color:#38bdf8}
 input[type=text]{flex:3;min-width:200px}input[type=number]{width:80px}select{flex:1;min-width:110px;cursor:pointer}
 button{cursor:pointer}
+button:disabled{opacity:.6;cursor:not-allowed}
 .btn-submit{padding:12px 20px;background:#0284c7;color:white;border:0;border-radius:6px;font-weight:bold}
 .category-filter{display:flex;gap:8px;margin-bottom:15px;justify-content:center;flex-wrap:wrap}
 .btn-filter{padding:8px 16px;background:#334155;border:1px solid #475569;color:#cbd5e1;border-radius:20px;font-weight:600;font-size:13px}
@@ -39,7 +40,8 @@ ul{list-style:none}li.comic-row{background:rgba(51,65,85,.7);padding:15px;margin
 #loginMessage,.notice{font-size:13px;color:#fbbf24;margin-top:12px;line-height:1.5}
 #appPanel{display:none}.topbar{display:flex;justify-content:flex-end;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
 .small-btn{background:#334155;color:#e2e8f0;border:1px solid #475569;border-radius:6px;padding:8px 10px;font-size:12px}
-#status{font-size:12px;color:#94a3b8}
+.small-btn.warn{border-color:#f59e0b;color:#fde68a}
+#status{font-size:12px;color:#94a3b8;margin-right:auto}
 @media(max-width:560px){body{padding:14px 10px}.container{padding:16px}.comic-info{max-width:100%;width:100%}.action-btn{margin-left:auto}}
 </style>
 </head>
@@ -56,13 +58,20 @@ ul{list-style:none}li.comic-row{background:rgba(51,65,85,.7);padding:15px;margin
 </section>
 
 <div class="container" id="appPanel">
-<div class="topbar"><span id="status">Menghubungkan...</span><button class="small-btn" id="exportBtn">Backup JSON</button><button class="small-btn" id="importBtn">Pulihkan JSON</button><button class="small-btn" id="logoutBtn">Keluar</button><input id="importFile" type="file" accept=".json,application/json" hidden></div>
+<div class="topbar">
+<span id="status">Menghubungkan...</span>
+<button class="small-btn warn" id="dedupeBtn" type="button">Hapus Duplikat</button>
+<button class="small-btn" id="exportBtn" type="button">Backup JSON</button>
+<button class="small-btn" id="importBtn" type="button">Pulihkan JSON</button>
+<button class="small-btn" id="logoutBtn" type="button">Keluar</button>
+<input id="importFile" type="file" accept=".json,application/json" hidden>
+</div>
 <h1>📖 Chapter Komik</h1>
 <form id="comicForm">
 <input type="text" id="comicTitle" placeholder="Judul Komik Baru..." required>
 <input type="number" id="comicChapter" placeholder="Ch" min="1" required>
 <select id="comicType"><option value="manhwa">Manhwa</option><option value="manhua">Manhua</option><option value="manga">Manga</option></select>
-<button type="submit" class="btn-submit">Tambah</button>
+<button type="submit" id="submitBtn" class="btn-submit">Tambah</button>
 </form>
 <div class="category-filter">
 <button class="btn-filter active" data-category="semua">Semua</button>
@@ -90,8 +99,32 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth(), db=firebase.firestore();
 const $=id=>document.getElementById(id);
-let comics=[], currentCategory='semua', unsubscribe=null, currentUser=null, ready=false;
+let comics=[], currentCategory='semua', unsubscribe=null, currentUser=null, ready=false, isSubmitting=false;
 const loginPanel=$('loginPanel'), appPanel=$('appPanel'), loginMessage=$('loginMessage');
+
+function normalizeTitle(title){
+  return String(title||'').trim().replace(/\s+/g,' ').toLowerCase();
+}
+
+function deduplicateList(arr){
+  const map=new Map();
+  for(const raw of arr){
+    const title=String(raw.title||'').trim();
+    if(!title)continue;
+    const key=normalizeTitle(title);
+    const item={
+      title,
+      chapter:Math.max(1,Number(raw.chapter)||1),
+      type:raw.type||'manhwa',
+      lastModified:Number(raw.lastModified)||Date.now()
+    };
+    const prev=map.get(key);
+    if(!prev||item.chapter>prev.chapter||(item.chapter===prev.chapter&&item.lastModified>prev.lastModified)){
+      map.set(key,item);
+    }
+  }
+  return Array.from(map.values());
+}
 
 $('loginForm').addEventListener('submit',async e=>{
  e.preventDefault();loginMessage.textContent='Sedang masuk...';
@@ -113,10 +146,11 @@ auth.onAuthStateChanged(async user=>{
    if(snap.empty){
      let local=[];
      try{local=JSON.parse(localStorage.getItem('myComicList')||'[]');}catch(e){}
-     if(!Array.isArray(local)||!local.length){$('status').textContent='Cloud kosong. Gunakan Pulihkan JSON untuk memasukkan backup.';}
+     const cleanLocal=Array.isArray(local)?deduplicateList(local):[];
+     if(!cleanLocal.length){$('status').textContent='Cloud kosong. Gunakan Pulihkan JSON untuk memasukkan backup.';}
      else{
        const batch=db.batch();
-       local.forEach(c=>{const doc=ref.doc();batch.set(doc,{title:String(c.title||''),chapter:Number(c.chapter)||1,type:c.type||'manhwa',lastModified:Number(c.lastModified)||Date.now()});});
+       cleanLocal.forEach(c=>{const doc=ref.doc();batch.set(doc,c);});
        await batch.commit();
        $('status').textContent='Data lokal berhasil dipindahkan ke cloud.';
      }
@@ -161,7 +195,61 @@ function action(label,cls,fn){const b=document.createElement('button');b.classNa
 function formatTime(ts){if(!ts)return '';return new Date(ts).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).replace(/\./g,':');}
 async function update(i,fields){if(!ready||!comics[i])return;const item=comics[i];const updated={...fields,lastModified:Date.now()};try{await db.collection('users').doc(currentUser.uid).collection('comics').doc(item.id).update(updated);}catch(e){alert('Gagal menyimpan perubahan: '+e.message);}}
 async function deleteComic(i){if(!ready||!comics[i])return;const c=comics[i];if(confirm(`Hapus "${c.title}" dari daftar?`)){try{await db.collection('users').doc(currentUser.uid).collection('comics').doc(c.id).delete();}catch(e){alert('Gagal menghapus: '+e.message);}}}
-$('comicForm').addEventListener('submit',async e=>{e.preventDefault();if(!ready)return alert('Data cloud belum siap.');const title=$('comicTitle').value.trim(),chapter=parseInt($('comicChapter').value),type=$('comicType').value;if(!title||!chapter)return;try{await db.collection('users').doc(currentUser.uid).collection('comics').add({title,chapter,type,lastModified:Date.now()});$('comicForm').reset();}catch(err){alert('Gagal menambah komik: '+err.message);}});
+
+$('comicForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ if(!ready)return alert('Data cloud belum siap.');
+ if(isSubmitting)return;
+ const title=$('comicTitle').value.trim(), chapter=parseInt($('comicChapter').value,10), type=$('comicType').value;
+ if(!title||!chapter)return;
+ const existing=comics.find(c=>normalizeTitle(c.title)===normalizeTitle(title));
+ if(existing){
+  if(!confirm(`"${existing.title}" sudah ada di daftar (Chapter ${existing.chapter}). Perbarui chapternya menjadi ${chapter}?`))return;
+  isSubmitting=true;$('submitBtn').disabled=true;$('submitBtn').textContent='Menyimpan...';
+  try{
+   await db.collection('users').doc(currentUser.uid).collection('comics').doc(existing.id).update({chapter,type,lastModified:Date.now()});
+   $('comicForm').reset();
+  }catch(err){alert('Gagal memperbarui komik: '+err.message);}
+  finally{isSubmitting=false;$('submitBtn').disabled=false;$('submitBtn').textContent='Tambah';}
+  return;
+ }
+ isSubmitting=true;$('submitBtn').disabled=true;$('submitBtn').textContent='Menyimpan...';
+ try{
+  await db.collection('users').doc(currentUser.uid).collection('comics').add({title,chapter,type,lastModified:Date.now()});
+  $('comicForm').reset();
+ }catch(err){alert('Gagal menambah komik: '+err.message);}
+ finally{isSubmitting=false;$('submitBtn').disabled=false;$('submitBtn').textContent='Tambah';}
+});
+
+$('dedupeBtn').onclick=async()=>{
+ if(!ready)return alert('Tunggu sampai cloud siap.');
+ const bestByTitle=new Map(), toDelete=[];
+ for(const c of comics){
+  const key=normalizeTitle(c.title);
+  if(!key){toDelete.push(c);continue;}
+  const prev=bestByTitle.get(key);
+  if(!prev){bestByTitle.set(key,c);continue;}
+  const cCh=Number(c.chapter)||1, pCh=Number(prev.chapter)||1;
+  if(cCh>pCh||(cCh===pCh&&(Number(c.lastModified)||0)>(Number(prev.lastModified)||0))){
+   toDelete.push(prev);bestByTitle.set(key,c);
+  }else{
+   toDelete.push(c);
+  }
+ }
+ if(!toDelete.length)return alert('Tidak ada komik duplikat yang ditemukan.');
+ if(!confirm(`Ditemukan ${toDelete.length} entri duplikat. Hapus duplikat sekarang?`))return;
+ const col=db.collection('users').doc(currentUser.uid).collection('comics');
+ try{
+  let batch=db.batch(), ops=0;
+  for(const d of toDelete){
+   batch.delete(col.doc(d.id));ops++;
+   if(ops>=450){await batch.commit();batch=db.batch();ops=0;}
+  }
+  if(ops)await batch.commit();
+  alert(`${toDelete.length} entri duplikat berhasil dihapus.`);
+ }catch(err){alert('Gagal menghapus duplikat: '+err.message);}
+};
+
 document.querySelectorAll('.btn-filter').forEach(b=>b.onclick=()=>{currentCategory=b.dataset.category;document.querySelectorAll('.btn-filter').forEach(x=>x.classList.toggle('active',x===b));render();});
 $('searchInput').addEventListener('input',render);
 $('logoutBtn').onclick=()=>auth.signOut();
@@ -173,10 +261,11 @@ $('importFile').addEventListener('change',async e=>{
   const data=JSON.parse(await file.text());let raw=data.localStorage?.myComicList;
   const arr=typeof raw==='string'?JSON.parse(raw):(Array.isArray(raw)?raw:data.comics);
   if(!Array.isArray(arr))throw new Error('Format backup tidak dikenali.');
-  if(!confirm(`Pulihkan ${arr.length} komik ke cloud? Data cloud yang ada akan diganti.`))return;
+  const cleanArr=deduplicateList(arr);
+  if(!confirm(`Pulihkan ${cleanArr.length} komik unik ke cloud? Data cloud yang ada akan diganti.`))return;
   const col=db.collection('users').doc(currentUser.uid).collection('comics');const old=await col.get();let batch=db.batch(),ops=0;
   old.docs.forEach(d=>{batch.delete(d.ref);ops++;});
-  for(const c of arr){const doc=col.doc();batch.set(doc,{title:String(c.title||''),chapter:Number(c.chapter)||1,type:c.type||'manhwa',lastModified:Number(c.lastModified)||Date.now()});ops++;if(ops>=450){await batch.commit();batch=db.batch();ops=0;}}
+  for(const c of cleanArr){const doc=col.doc();batch.set(doc,c);ops++;if(ops>=450){await batch.commit();batch=db.batch();ops=0;}}
   if(ops)await batch.commit();alert('Backup berhasil dipulihkan ke cloud.');
  }catch(err){alert('Gagal memulihkan backup: '+err.message);}finally{e.target.value='';}
 });
